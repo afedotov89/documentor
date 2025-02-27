@@ -1,6 +1,6 @@
 # Documentor
 
-Documentor is a minimal VSCode plugin designed to automatically generate documentation for the selected file or directory with
+Documentor is a minimal VSCode plugin designed to automatically generate documentation for the selected code files and directories.
 
 ## Key Features
 
