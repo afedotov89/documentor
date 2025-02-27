@@ -219,6 +219,103 @@ async function showIndexedFiles() {
 }
 
 /**
+ * Exports documentation for the selected resource to a file
+ * @param {object} resource - The resource for which to export documentation
+ */
+async function exportDocumentation(resource) {
+  const fileInfo = documentor.getDocumentation(resource);
+  
+  if (!fileInfo) {
+    vscode.window.showInformationMessage('No documentation for this file or directory.');
+    return;
+  }
+
+  // Get default export path from settings with fallback
+  const config = vscode.workspace.getConfiguration('documentor');
+  let defaultPath;
+  try {
+    defaultPath = config.get('defaultExportPath');
+    if (!defaultPath) {
+      defaultPath = '${workspaceFolder}';
+    }
+  } catch (error) {
+    defaultPath = '${workspaceFolder}';
+  }
+  
+  // Replace workspace folder variable if present
+  try {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder is open');
+      return;
+    }
+    defaultPath = defaultPath.replace(/\${workspaceFolder}/g, workspaceFolder);
+  } catch (error) {
+    vscode.window.showErrorMessage('Failed to process export path');
+    return;
+  }
+
+  // Ensure the directory exists
+  try {
+    if (!fs.existsSync(defaultPath)) {
+      fs.mkdirSync(defaultPath, { recursive: true });
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to create directory: ${error.message}`);
+    return;
+  }
+
+  // Generate default filename
+  const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
+  const defaultFilename = `${capitalize(pathModule.basename(resource.fsPath))}.md`;
+  const defaultFullPath = pathModule.join(defaultPath, defaultFilename);
+
+  // Show save dialog
+  const uri = await vscode.window.showSaveDialog({
+    defaultUri: vscode.Uri.file(defaultFullPath),
+    filters: {
+      'Markdown': ['md'],
+      'All files': ['*']
+    },
+    title: 'Export Documentation'
+  });
+
+  if (!uri) {
+    return; // User cancelled
+  }
+
+  // Check if file exists
+  if (fs.existsSync(uri.fsPath)) {
+    const answer = await vscode.window.showWarningMessage(
+      'File already exists. Do you want to replace it?',
+      'Yes',
+      'No'
+    );
+    if (answer !== 'Yes') {
+      return;
+    }
+  }
+
+  // Format documentation
+  const content = [
+    `# Documentation for ${resource.fsPath}`,
+    `\n## Creation Date: ${new Date(fileInfo.timestamp).toLocaleString()}`,
+    '\n## Docstring:',
+    `\n${fileInfo.docstring || 'No docstring'}`,
+    '\n## Detailed Description:',
+    `\n${fileInfo.description || 'No description'}`
+  ].join('\n');
+
+  // Write to file
+  try {
+    fs.writeFileSync(uri.fsPath, content, 'utf8');
+    vscode.window.showInformationMessage(`Documentation exported to ${uri.fsPath}`);
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to export documentation: ${error.message}`);
+  }
+}
+
+/**
  * Extension activation.
  * Registers the 'extension.documentor' command for resource processing.
  *
@@ -231,11 +328,11 @@ function activate(context) {
   });
   context.subscriptions.push(disposable);
   
-  // Register command for showing documentation
-  let showDocCmd = vscode.commands.registerCommand('extension.showDocumentation', async (resource) => {
-    await showDocumentation(resource);
+  // Register command for exporting documentation
+  let exportDocCmd = vscode.commands.registerCommand('extension.exportDocumentation', async (resource) => {
+    await exportDocumentation(resource);
   });
-  context.subscriptions.push(showDocCmd);
+  context.subscriptions.push(exportDocCmd);
   
   // Register command for clearing the index
   let clearIndexCmd = vscode.commands.registerCommand('extension.clearDocumentationIndex', async () => {

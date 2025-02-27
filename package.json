@@ -11,7 +11,7 @@
   "main": "./extension.js",
   "activationEvents": [
     "onCommand:extension.documentor",
-    "onCommand:extension.showDocumentation",
+    "onCommand:extension.exportDocumentation",
     "onCommand:extension.clearDocumentationIndex",
     "onCommand:extension.listIndexedFiles"
   ],
@@ -22,8 +22,8 @@
         "title": "Document Code"
       },
       {
-        "command": "extension.showDocumentation",
-        "title": "Show Documentation"
+        "command": "extension.exportDocumentation",
+        "title": "Export Documentation"
       },
       {
         "command": "extension.clearDocumentationIndex",
@@ -53,7 +53,7 @@
           "group": "navigation"
         },
         {
-          "command": "extension.showDocumentation",
+          "command": "extension.exportDocumentation",
           "group": "navigation"
         }
       ],
@@ -81,6 +81,12 @@
           "type": "string",
           "default": "gpt-4o-mini",
           "description": "Enter the model name"
+        },
+        "defaultExportPath": {
+          "order": 3,
+          "type": "string",
+          "default": "${workspaceFolder}/documentation",
+          "description": "Default path for exporting documentation"
         }
       }
     }

@@ -144,7 +144,7 @@ async function indexFile(currentPath, outputChannel) {
 
     // Log indexing start
     const ext = pathModule.extname(currentPath).toLowerCase();
-    outputChannel.appendLine(`Indexing ${ext} file ${currentPath}`);
+    outputChannel.appendLine(`Indexing file ${currentPath}`);
 
     // Initialize OpenAI client
     const ChatGPTClient = require('../../openaiClient.cjs');
@@ -152,7 +152,11 @@ async function indexFile(currentPath, outputChannel) {
     const client = new ChatGPTClient(apiKey, model);
 
     // Generate documentation
-    const response = await answerDocstring(client);
+    const contentDescription = `A file ${currentPath} with the following content:
+    ================================ START OF THE FILE ================================
+    ${content}
+    ================================ END OF THE FILE ================================`;
+    const response = await answerDocstring(client, contentDescription);
     const description = await generateDetailedDescription(client, currentPath, content);
     const members = await getMembers(client, currentPath, content);
 

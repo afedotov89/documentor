@@ -65,7 +65,7 @@ describe('fileProcessor tests', function() {
     console.log("Final file content:\n", updatedContent);
 
     // Get information from the index
-    const response = documentGenerator.getDocumentation(resource);
+    const response = await documentGenerator.getDocumentation(resource);
     console.log("Final index content:\n", response);
 
     // Check that the file starts with a docstring (triple quotes)

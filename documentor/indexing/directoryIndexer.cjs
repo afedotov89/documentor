@@ -76,16 +76,8 @@ async function indexDirectory(currentPath, outputChannel, customIgnorePatterns =
     }
   }
   
-  const prompt = `Give me a technical content description for a project's subdirectory along the path \`${currentPath}\` 
- that contains the following members:
-${members.join('\n')}
----
-Note, give only a general description with one or several sentences.
-- Do not include any enumerates of members.
-- Do not include any code examples.
-- Do not use the path in the description. Use it only for understanding the context.
-(depends on the content amount), do not include any enumerates of members.`;
-  // outputChannel.appendLine(`OpenAI request:\n${prompt}`);
+  const contentDescription = `A project's subdirectory along the path \`${currentPath}\` 
+ that contains the following members:\n${members.map(member => `- ${member.type}: ${member.name} - ${member.description}`).join('\n')}`;
 
   const configSettings = getVscode().workspace.getConfiguration();
   const apiKey = configSettings.get('OpenAI API Key');
@@ -101,7 +93,7 @@ Note, give only a general description with one or several sentences.
   const client = new ChatGPTClient(apiKey, model);
 
   const { answerDocstring, generateDirectoryDescription } = require('../utils');
-  const response = await answerDocstring(client,prompt);
+  const response = await answerDocstring(client, contentDescription);
   const description = await generateDirectoryDescription(client, currentPath, members);
 
   // Save to index

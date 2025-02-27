@@ -62,7 +62,7 @@ describe('Directory Processing Integration Tests', function () {
     
     console.log("Processed file:\n", updatedContent);
     // Get information from the index
-    const response = documentGenerator.getDocumentation({ fsPath: tempDir });
+    const response = await documentGenerator.getDocumentation({ fsPath: tempDir });
     console.log("Processing response:\n", response);
 
     assert.ok(updatedContent.startsWith('"""'), "Docstring is missing");

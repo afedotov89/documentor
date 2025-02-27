@@ -82,8 +82,9 @@ async function documentResource(resource) {
  * @param {object} resource - Resource to get documentation for
  * @returns {object|null} - Object with docstring and description or null if no information is available
  */
-function getDocumentation(resource) {
+async function getDocumentation(resource) {
   const filePath = resource.fsPath;
+  await indexPath(filePath, getOutputChannel());
   return indexManager.getFileInfo(filePath);
 }
 

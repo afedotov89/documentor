@@ -2,21 +2,25 @@
  * Module with utilities for documentation.
  */
 
-async function answerDocstring(GPTClient, customPrompt) {
-  const standardPrompt = `Generate a docstring that provides a clear technical description of the code.
+async function answerDocstring(GPTClient, contentDescription) {
+  const prompt = `Generate a docstring that provides a clear technical description of the content:
+
+  ${contentDescription}
 
 Ensure that the docstring meets the following criteria:
 - Provides a concise, general overview of the functionality
-- Describes parameters and return values if present
+- Does not point out obvious things like programming language, "it is a file", file name, etc. 
+- Does not not use the path in the description. Use it only for understanding the context
 - Does not include implementation details
 - Does not include usage examples
 - Each line is no longer than 100 characters
 - Remains professional and focused solely on the provided content
-- Uses clear, technical language`;
+- Uses clear, technical language
+
+Generate a docstring for the content in JSON format. Output format: {\"docstring\": \"<docstring text>\"}. Return only JSON.`;
   
   // Use customPrompt if provided, otherwise use the standard prompt
-  const basePrompt = customPrompt || standardPrompt;
-  const prompt = basePrompt + `\nGenerate a docstring for the function in JSON format. Output format: {\"docstring\": \"<function description>\"}. Return only JSON.`;
+  
 
   // If response_format is set as a string in defaultOptions, pass an empty object through options
   const options = { response_format: { "type": "json_object" }};
@@ -102,7 +106,7 @@ Do not include private elements (starting with _).
 For each element specify:
 1. Type (class/function/variable)
 2. Name
-3. Brief description (1 sentence)
+3. Brief description including parameters and return values
 
 Response format: JSON with array of objects: {"members": [{"type": "<type>", "name": "<name>", "description": "<description>"}]}. Return only JSON.
 
