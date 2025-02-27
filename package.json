@@ -1,0 +1,109 @@
+{
+  "name": "documentor",
+  "displayName": "Documentor",
+  "description": "Minimal VSCode plugin that generates documentation for the selected file or directory.",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "publisher": "yourname",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onCommand:extension.documentor",
+    "onCommand:extension.showDocumentation",
+    "onCommand:extension.clearDocumentationIndex",
+    "onCommand:extension.listIndexedFiles"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.documentor",
+        "title": "Document Code"
+      },
+      {
+        "command": "extension.showDocumentation",
+        "title": "Show Documentation"
+      },
+      {
+        "command": "extension.clearDocumentationIndex",
+        "title": "Clear Documentation Index"
+      },
+      {
+        "command": "extension.listIndexedFiles",
+        "title": "List All Indexed Files"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "documentor.submenu",
+        "label": "Documentor"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "documentor.submenu",
+          "group": "navigation"
+        }
+      ],
+      "documentor.submenu": [
+        {
+          "command": "extension.documentor",
+          "group": "navigation"
+        },
+        {
+          "command": "extension.showDocumentation",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "extension.clearDocumentationIndex"
+        },
+        {
+          "command": "extension.listIndexedFiles"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Documentor Settings",
+      "properties": {
+        "OpenAI API Key": {
+          "order": 1,
+          "type": "string",
+          "default": "",
+          "description": "Enter your OpenAI API Key"
+        },
+        "model": {
+          "order": 2,
+          "type": "string",
+          "default": "gpt-4o-mini",
+          "description": "Enter the model name"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo 'Nothing to compile'",
+    "compile": "echo 'No compilation needed'",
+    "test": "mocha \"{test,tests}/**/*.mjs\""
+  },
+  "devDependencies": {
+    "chai": "^5.2.0",
+    "mocha": "^10.2.0",
+    "proxyquire": "^2.1.3",
+    "sinon": "^19.0.2",
+    "vscode": "^1.1.37"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/docs_plugin.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.85.4",
+    "minimatch": "^9.0.3"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "node-option": [
+    "experimental-vm-modules"
+  ],
+  "timeout": 30000
+} 
