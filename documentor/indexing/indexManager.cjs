@@ -25,15 +25,17 @@ try {
  * @returns {string} Path to the index directory
  */
 function getBaseIndexDirectory() {
-  // In working mode, use the global storage folder from vscode
-  if (vscode.workspace && vscode.extensions) {
-    const extensionPath = vscode.extensions.getExtension('yourname.documentor')?.extensionPath;
-    if (extensionPath) {
-      return path.join(extensionPath, 'docIndexes');
-    }
+  // Use global storage URI when available
+  if (vscode.workspace && vscode.Uri && vscode.extensions) {
+    const storageUri = vscode.Uri.joinPath(
+      vscode.workspace.getConfiguration().get('documentor.globalStoragePath') ||
+      vscode.Uri.file(process.env.HOME || process.env.USERPROFILE),
+      '.documentor-indexes'
+    );
+    return storageUri.fsPath;
   }
   
-  // For testing, use a temporary directory
+  // Для тестов используем временную директорию
   const tempDir = process.env.TEMP || process.env.TMP || '/tmp';
   return path.join(tempDir, 'documentor-indexes');
 }
@@ -232,10 +234,16 @@ class IndexManager {
   isFileInfoValid(filePath, maxAgeMs = 0) {
     const fileInfo = this.getFileInfo(filePath);
     if (!fileInfo) return false;
-    
-    const now = Date.now();
-    const age = now - fileInfo.timestamp;
-    return age <= maxAgeMs;
+
+    try {
+      const stats = fs.statSync(filePath);
+      const lastModifiedTime = stats.mtimeMs; // Get the last modified time of the file
+
+      return lastModifiedTime <= fileInfo.timestamp;
+    } catch (error) {
+      console.error(`Error retrieving file stats: ${error.message}`);
+      return false;
+    }
   }
 
   /**

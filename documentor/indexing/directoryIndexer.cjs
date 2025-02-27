@@ -36,21 +36,15 @@ function getVscode() {
 }
 
 async function indexDirectory(currentPath, outputChannel, customIgnorePatterns = []) {
-  
-  // Check if current information exists in the index
-  if (indexManager.isFileInfoValid(currentPath)) {
-    const fileInfo = indexManager.getFileInfo(currentPath);
-    console.log(`Using cached description for directory ${currentPath}`);
-    return fileInfo;
-  }
-  outputChannel.appendLine(`Indexing directory: ${currentPath}`);
-  
+    
   const fsPromises = fs.promises;
   const entries = await fsPromises.readdir(currentPath);
   const members = [];
   // Import indexPath inside the function to avoid circular dependencies
   const { indexPath } = require('./pathIndexer.cjs');
   
+  let maxUpdateTime = 0; // Variable to track the maximum update time
+
   for (const entry of entries) {
     const fullPath = pathModule.join(currentPath, entry);
     
@@ -70,12 +64,26 @@ async function indexDirectory(currentPath, outputChannel, customIgnorePatterns =
         }
         member.type = pathInfo.isDirectory ? 'directory' : 'file';
         members.push(member);
+
+        // Update the maximum update time if the current pathInfo has a greater time
+        if (pathInfo.updateTime > maxUpdateTime) {
+          maxUpdateTime = pathInfo.updateTime;
+        }
       }
     } catch (e) {
       outputChannel.appendLine(`Failed to process ${fullPath}: ${e}`);
     }
   }
   
+
+  // Check if current information exists in the index
+  if (indexManager.isFileInfoValid(currentPath) && indexManager.getFileInfo(currentPath).updateTime >= maxUpdateTime) {
+    const fileInfo = indexManager.getFileInfo(currentPath);
+    console.log(`Using cached description for directory ${currentPath}`);
+    return fileInfo;
+  }  
+  outputChannel.appendLine(`Indexing directory: ${currentPath}`);
+
   const contentDescription = `A project's subdirectory along the path \`${currentPath}\` 
  that contains the following members:\n${members.map(member => `- ${member.type}: ${member.name} - ${member.description}`).join('\n')}`;
 

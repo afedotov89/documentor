@@ -8,113 +8,15 @@
  */
 
 const vscode = require('vscode');
-const pathModule = require('path'); // This import can be left if needed in the future
+const pathModule = require('path');
 const fs = require('fs');
 const documentor = require('./documentor/documentGenerator.cjs');
 const { indexManager } = require('./documentor/indexing/indexManager.cjs');
+const { generateStandardProjectDocumentation } = require('./documentor/documenting/index.cjs');
 
-/**
- * Shows documentation for the selected resource in a new editor tab
- * @param {object} resource - The resource for which to show documentation
- */
-async function showDocumentation(resource) {
-  const fileInfo = documentor.getDocumentation(resource);
-  
-  if (!fileInfo) {
-    vscode.window.showInformationMessage('No documentation for this file or directory.');
-    return;
-  }
-  
-  // Create a temporary file with documentation
-  const content = [
-    `# Documentation for ${resource.fsPath}`,
-    `\n## Creation Date: ${new Date(fileInfo.timestamp).toLocaleString()}`,
-    '\n## Docstring:',
-    `\n${fileInfo.docstring || 'No docstring'}`,
-    '\n## Detailed Description:',
-    `\n${fileInfo.description || 'No description'}`
-  ].join('\n');
-  
-  // Create a new document
-  const doc = await vscode.workspace.openTextDocument({
-    content: content,
-    language: 'markdown'
-  });
-  
-  // Show document
-  await vscode.window.showTextDocument(doc);
-}
-
-/**
- * Selects a project to clear the index
- * @returns {Promise<string|null>} Path to the selected project or null if canceled
- */
-async function selectProjectForClearIndex() {
-  const projects = indexManager.getIndexedProjects();
-  
-  if (projects.length === 0) {
-    vscode.window.showInformationMessage('No indexed projects.');
-    return null;
-  }
-  
-  // If only one project is open, use it
-  if (projects.length === 1) {
-    return projects[0].path;
-  }
-  
-  // Create a list of projects to choose from
-  const items = projects.map(project => ({
-    label: project.name,
-    description: project.path,
-    projectPath: project.path
-  }));
-  
-  // Add the "All Projects" option
-  items.unshift({
-    label: 'All Projects',
-    description: 'Clear indices for all projects',
-    projectPath: 'ALL'
-  });
-  
-  // Show selection dialog
-  const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select a project to clear the index'
-  });
-  
-  return selected ? selected.projectPath : null;
-}
-
-/**
- * Selects a project to view indexed files
- * @returns {Promise<string|null>} Path to the selected project or null if canceled
- */
-async function selectProjectForViewIndex() {
-  const projects = indexManager.getIndexedProjects();
-  
-  if (projects.length === 0) {
-    vscode.window.showInformationMessage('No indexed projects.');
-    return null;
-  }
-  
-  // If only one project is open, use it
-  if (projects.length === 1) {
-    return projects[0].path;
-  }
-  
-  // Create a list of projects to choose from
-  const items = projects.map(project => ({
-    label: project.name,
-    description: project.path,
-    projectPath: project.path
-  }));
-  
-  // Show selection dialog
-  const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select a project to view the index'
-  });
-  
-  return selected ? selected.projectPath : null;
-}
+// Global variables
+let exportPanel = undefined;
+let statusBarItem = undefined;
 
 /**
  * Gets a list of all indexed files in the selected project
@@ -165,153 +67,257 @@ async function getIndexedFilesInProject(projectPath) {
 }
 
 /**
- * Shows a list of all indexed files for the selected project
+ * Exports documentation for the current workspace/project
  */
-async function showIndexedFiles() {
-  const projectPath = await selectProjectForViewIndex();
-  
-  if (!projectPath) {
-    return; // User canceled selection
-  }
-  
-  const indexedFiles = await getIndexedFilesInProject(projectPath);
-  
-  if (indexedFiles.length === 0) {
-    vscode.window.showInformationMessage('There are no indexed files in this project.');
+async function exportProjectDocumentation() {
+  // Get the root directory of the project
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('No workspace folder is open');
     return;
   }
   
-  // Create a list of files to choose from
-  const items = indexedFiles.map(file => ({
-    label: pathModule.basename(file.filePath),
-    description: `Updated: ${new Date(file.timestamp).toLocaleString()}`,
-    detail: file.filePath,
-    fileInfo: file
-  }));
-  
-  // Show selection dialog
-  const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select a file to view documentation',
-    matchOnDescription: true,
-    matchOnDetail: true
-  });
-  
-  if (selected) {
-    // Format documentation for the selected file
-    const content = [
-      `# Documentation for ${selected.fileInfo.filePath}`,
-      `\n## Creation Date: ${new Date(selected.fileInfo.timestamp).toLocaleString()}`,
-      '\n## Docstring:',
-      `\n${selected.fileInfo.docstring || 'No docstring'}`,
-      '\n## Detailed Description:',
-      `\n${selected.fileInfo.description || 'No description'}`
-    ].join('\n');
+  const resource = workspaceFolder.uri;
     
-    // Create a new document
-    const doc = await vscode.workspace.openTextDocument({
-      content: content,
-      language: 'markdown'
-    });
-    
-    // Show document
-    await vscode.window.showTextDocument(doc);
-  }
+  // Export documentation
+  await exportReadmeWithWebView(resource);
 }
 
 /**
- * Exports documentation for the selected resource to a file
+ * Exports documentation for the selected resource to a file using WebView
  * @param {object} resource - The resource for which to export documentation
  */
-async function exportDocumentation(resource) {
-  const fileInfo = documentor.getDocumentation(resource);
+async function exportReadmeWithWebView(resource) {
   
-  if (!fileInfo) {
-    vscode.window.showInformationMessage('No documentation for this file or directory.');
-    return;
-  }
-
-  // Get default export path from settings with fallback
+  // Get settings
   const config = vscode.workspace.getConfiguration('documentor');
-  let defaultPath;
-  try {
-    defaultPath = config.get('defaultExportPath');
-    if (!defaultPath) {
-      defaultPath = '${workspaceFolder}';
-    }
-  } catch (error) {
-    defaultPath = '${workspaceFolder}';
-  }
-  
-  // Replace workspace folder variable if present
+  let defaultExportPath;
   try {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder is open');
       return;
     }
-    defaultPath = defaultPath.replace(/\${workspaceFolder}/g, workspaceFolder);
+    
+    defaultExportPath = '${workspaceFolder}';
+    defaultExportPath = defaultExportPath.replace(/\${workspaceFolder}/g, workspaceFolder);
   } catch (error) {
     vscode.window.showErrorMessage('Failed to process export path');
     return;
   }
-
-  // Ensure the directory exists
+  
+  // Generate default filename - always README.md
+  const defaultFilename = 'README.md';
+  
+  // Create or reuse WebView panel
+  if (!exportPanel) {
+    exportPanel = vscode.window.createWebviewPanel(
+      'exportDocumentation',
+      'Export Project Documentation',
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        localResourceRoots: [
+          vscode.Uri.file(pathModule.join(vscode.extensions.getExtension('yourname.documentor').extensionPath, 'media'))
+        ]
+      }
+    );
+    
+    // Handle panel closure
+    exportPanel.onDidDispose(() => {
+      exportPanel = undefined;
+    });
+  } else {
+    exportPanel.reveal(vscode.ViewColumn.One);
+  }
+  
+  // Get paths to resources
+  const mediaPath = pathModule.join(vscode.extensions.getExtension('yourname.documentor').extensionPath, 'media');
+  
+  const cssUri = exportPanel.webview.asWebviewUri(
+    vscode.Uri.file(pathModule.join(mediaPath, 'webview', 'styles.css'))
+  );
+  
+  const mainJsUri = exportPanel.webview.asWebviewUri(
+    vscode.Uri.file(pathModule.join(mediaPath, 'webview', 'main.js'))
+  );
+  
+  // Read HTML template
+  let htmlContent;
   try {
-    if (!fs.existsSync(defaultPath)) {
-      fs.mkdirSync(defaultPath, { recursive: true });
+    htmlContent = fs.readFileSync(pathModule.join(mediaPath, 'webview', 'export-readme-form.html'), 'utf8');
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to load WebView HTML: ${error.message}`);
+    return;
+  }
+  
+  // Prepare default full path
+  const defaultFullPath = pathModule.join(defaultExportPath, defaultFilename);
+  
+  // Replace placeholders
+  htmlContent = htmlContent
+    .replace('{{cssUri}}', cssUri)
+    .replace('{{mainJsUri}}', mainJsUri)
+    .replace('{{defaultExportPath}}', defaultFullPath);
+  
+  // Set HTML content
+  exportPanel.webview.html = htmlContent;
+  
+  // Handle messages from WebView
+  exportPanel.webview.onDidReceiveMessage(async (message) => {
+    switch (message.command) {
+      case 'webviewReady':
+        // Send resource information to WebView
+        exportPanel.webview.postMessage({
+          command: 'setResourceInfo',
+          resourceInfo: {
+            filePath: resource.fsPath,
+            fileName: pathModule.basename(resource.fsPath),
+            defaultFilename: defaultFilename,
+            exportPath: defaultExportPath,
+            isProject: true
+          }
+        });
+        break;
+        
+      case 'export':
+        // Export documentation
+        await handleExportFromWebView(resource, message.config, true);
+        break;
+        
+      case 'cancel':
+        // Close panel
+        if (exportPanel) {
+          exportPanel.dispose();
+        }
+        break;
+        
+      case 'getDirectories':
+        // Get list of directories
+        const directories = await getDirectoriesForPath(message.path);
+        exportPanel.webview.postMessage({
+          command: 'setDirectories',
+          directories: directories
+        });
+        break;
+        
+      case 'showMessage':
+        // Show message
+        vscode.window.showInformationMessage(message.message);
+        break;
+    }
+  });
+}
+
+/**
+ * Handles documentation export from WebView
+ * @param {object} resource - Resource to export
+ * @param {object} fileInfo - File information
+ * @param {object} config - Export configuration
+ * @param {boolean} isProject - Flag indicating if we're exporting project documentation
+ */
+async function handleExportFromWebView(resource, config, isProject = true) {
+  // Ensure the directory exists
+  const fileInfo = await documentor.getDocumentation(resource);
+  try {
+    if (!fs.existsSync(config.exportDir)) {
+      fs.mkdirSync(config.exportDir, { recursive: true });
     }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to create directory: ${error.message}`);
     return;
   }
 
-  // Generate default filename
-  const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
-  const defaultFilename = `${capitalize(pathModule.basename(resource.fsPath))}.md`;
-  const defaultFullPath = pathModule.join(defaultPath, defaultFilename);
-
-  // Show save dialog
-  const uri = await vscode.window.showSaveDialog({
-    defaultUri: vscode.Uri.file(defaultFullPath),
-    filters: {
-      'Markdown': ['md'],
-      'All files': ['*']
-    },
-    title: 'Export Documentation'
-  });
-
-  if (!uri) {
-    return; // User cancelled
-  }
+  // Construct the full file path
+  const fullPath = pathModule.join(config.exportDir, config.filename);
 
   // Check if file exists
-  if (fs.existsSync(uri.fsPath)) {
+  if (fs.existsSync(fullPath)) {
     const answer = await vscode.window.showWarningMessage(
       'File already exists. Do you want to replace it?',
       'Yes',
       'No'
     );
+    
     if (answer !== 'Yes') {
       return;
     }
   }
 
-  // Format documentation
-  const content = [
-    `# Documentation for ${resource.fsPath}`,
-    `\n## Creation Date: ${new Date(fileInfo.timestamp).toLocaleString()}`,
-    '\n## Docstring:',
-    `\n${fileInfo.docstring || 'No docstring'}`,
-    '\n## Detailed Description:',
-    `\n${fileInfo.description || 'No description'}`
-  ].join('\n');
+  // For project create documentation
+  const indexedFiles = await getIndexedFilesInProject(resource.fsPath);
+  
+  // Get selected sections from configuration
+  const selectedSections = config.sections || [];
+  
+  // Use standard documentation format with selected sections
+  const content = await generateStandardProjectDocumentation(resource, fileInfo, indexedFiles, selectedSections);
 
   // Write to file
   try {
-    fs.writeFileSync(uri.fsPath, content, 'utf8');
-    vscode.window.showInformationMessage(`Documentation exported to ${uri.fsPath}`);
+    fs.writeFileSync(fullPath, content, 'utf8');
+    
+    // Close WebView panel
+    if (exportPanel) {
+      exportPanel.dispose();
+    }
+    
+    // Ask if user wants to open the file
+    const openFile = await vscode.window.showInformationMessage(
+      `Documentation exported to ${fullPath}`,
+      'Open file',
+      'OK'
+    );
+    
+    if (openFile === 'Open file') {
+      const openPath = vscode.Uri.file(fullPath);
+      const doc = await vscode.workspace.openTextDocument(openPath);
+      await vscode.window.showTextDocument(doc);
+    }
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to export documentation: ${error.message}`);
+  }
+}
+
+/**
+ * Gets list of directories for specified path
+ * @param {string} dirPath - Path to directory
+ * @returns {object} List of directories
+ */
+async function getDirectoriesForPath(dirPath) {
+  try {
+    // Check if directory exists
+    if (!fs.existsSync(dirPath)) {
+      return {
+        parentPath: null,
+        items: []
+      };
+    }
+    
+    // Get list of files and directories
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    
+    // Filter only directories
+    const directories = entries
+      .filter(entry => entry.isDirectory())
+      .map(entry => ({
+        name: entry.name,
+        path: pathModule.join(dirPath, entry.name)
+      }));
+    
+    // Get parent directory
+    const parentPath = pathModule.dirname(dirPath) !== dirPath ? pathModule.dirname(dirPath) : null;
+    
+    return {
+      parentPath: parentPath,
+      items: directories
+    };
+  } catch (error) {
+    vscode.window.showErrorMessage(`Directory reading error: ${error.message}`);
+    return {
+      parentPath: null,
+      items: []
+    };
   }
 }
 
@@ -322,47 +328,122 @@ async function exportDocumentation(resource) {
  * @param {Object} context - Extension context.
  */
 function activate(context) {
+  // Create status bar button
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+  statusBarItem.text = "$(book) Export Docs";
+  statusBarItem.tooltip = "Export project documentation";
+  statusBarItem.command = "extension.showDocumentorMenu";
+  statusBarItem.show();
+  context.subscriptions.push(statusBarItem);
+  
   // Register command for creating documentation
   let disposable = vscode.commands.registerCommand('extension.documentor', async (resource) => {
     await documentor.documentResource(resource);
   });
   context.subscriptions.push(disposable);
   
-  // Register command for exporting documentation
-  let exportDocCmd = vscode.commands.registerCommand('extension.exportDocumentation', async (resource) => {
-    await exportDocumentation(resource);
+  // Register new command for displaying documentation menu
+  let showMenuCmd = vscode.commands.registerCommand('extension.showDocumentorMenu', async () => {
+    await showDocumentorMenu(context);
   });
-  context.subscriptions.push(exportDocCmd);
-  
-  // Register command for clearing the index
-  let clearIndexCmd = vscode.commands.registerCommand('extension.clearDocumentationIndex', async () => {
-    // Ask the user which project to clear
-    const projectPath = await selectProjectForClearIndex();
-    
-    if (!projectPath) {
-      return; // User canceled selection
+  context.subscriptions.push(showMenuCmd);
+}
+
+/**
+ * Shows dropdown menu with options for exporting documentation
+ * @param {Object} context - Extension context
+ */
+async function showDocumentorMenu(context) {
+  const options = [
+    { 
+      label: "$(markdown) README.md", 
+      description: "Export documentation to README.md",
+      action: "readme"
+    },
+    { 
+      label: "$(book) Full documentation", 
+      description: "Export full project documentation",
+      action: "full" 
+    },
+    { 
+      label: "$(file) Custom format...", 
+      description: "Export to custom file",
+      action: "custom" 
     }
-    
-    if (projectPath === 'ALL') {
-      // Clear all projects
-      const projects = indexManager.getIndexedProjects();
-      for (const project of projects) {
-        indexManager.clearProjectIndex(project.path);
-      }
-      vscode.window.showInformationMessage('All project indices cleared.');
-    } else {
-      // Clear the selected project
-      indexManager.clearProjectIndex(projectPath);
-      vscode.window.showInformationMessage(`Project index cleared: ${pathModule.basename(projectPath)}`);
-    }
+  ];
+
+  const selected = await vscode.window.showQuickPick(options, { 
+    placeHolder: 'Select documentation export type' 
   });
-  context.subscriptions.push(clearIndexCmd);
+
+  if (!selected) {
+    return; // User cancelled selection
+  }
+
+  // Process user selection
+  switch (selected.action) {
+    case 'readme':
+    case 'full':
+    case 'custom':
+      // All documentation types are exported via WebView with README.md
+      await exportProjectDocumentation();
+      break;
+  }
+}
+
+/**
+ * Exports documentation to README.md file in project root
+ */
+async function exportDocumentationToReadme() {
+  // Get project root directory
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('No workspace folder open');
+    return;
+  }
   
-  // Register command for viewing all indexed files
-  let listIndexedFilesCmd = vscode.commands.registerCommand('extension.listIndexedFiles', async () => {
-    await showIndexedFiles();
-  });
-  context.subscriptions.push(listIndexedFilesCmd);
+  const resource = workspaceFolder.uri;
+  const fileInfo = await documentor.getDocumentation(resource);
+  const indexedFiles = await getIndexedFilesInProject(resource.fsPath);
+  
+  // Create README.md content
+  const content = await generateStandardProjectDocumentation(resource, fileInfo, indexedFiles);
+  
+  // Path to README.md in project root
+  const readmePath = pathModule.join(resource.fsPath, 'README.md');
+  
+  // Check if file exists
+  if (fs.existsSync(readmePath)) {
+    const answer = await vscode.window.showWarningMessage(
+      'README.md file already exists. Do you want to replace it?',
+      'Yes',
+      'No'
+    );
+    
+    if (answer !== 'Yes') {
+      return;
+    }
+  }
+  
+  // Write file
+  try {
+    fs.writeFileSync(readmePath, content, 'utf8');
+    
+    // Ask if user wants to open the file
+    const openFile = await vscode.window.showInformationMessage(
+      `Documentation exported to README.md`,
+      'Open file',
+      'OK'
+    );
+    
+    if (openFile === 'Open file') {
+      const openPath = vscode.Uri.file(readmePath);
+      const doc = await vscode.workspace.openTextDocument(openPath);
+      await vscode.window.showTextDocument(doc);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to export documentation: ${error.message}`);
+  }
 }
 
 /**

@@ -5,14 +5,49 @@ Documentor is a minimal VSCode plugin designed to automatically generate documen
 ## Key Features
 
 - Generates documentation for any selected file or directory in VSCode.
+- Exports documentation to files in different formats.
+- Provides a modern, user-friendly interface for exporting documentation.
 - Integrates seamlessly with the Explorer context menu.
 - Quick and straightforward usage with minimal setup.
+- Export documentation for the entire project through a status bar button.
 
 ## How to Use
 
-1. Open your project folder in VSCode.
-2. Press F5 to launch a new instance of VSCode with the extension enabled.
-3. In the Explorer, right-click on any file or folder and select "Document Code". The generated documentation will be displayed promptly.
+1. **Generating Documentation**:
+   - Right-click on any file or directory in the Explorer.
+   - Select "Generate Documentation".
+   - The generated documentation will be displayed in a new editor tab.
+
+2. **Exporting Documentation**:
+   - Right-click on any file or directory in the Explorer.
+   - Select "Export Documentation (Advanced)".
+   - In the dialog that opens, configure the export options:
+     - Choose the type of documentation.
+     - Set the path to save the documentation file.
+   - Click "Export".
+
+3. **Exporting Documentation for the Entire Project**:
+   - Click the "Export Docs" button in the status bar (bottom of the screen).
+   - In the dialog that opens, configure the export options for project documentation.
+   - Click "Export".
+   - The documentation will be created for all indexed files in the project.
+
+## Documentation Export Options
+
+- **Documentation Type**: Choose between README.md or a custom documentation file.
+- **Filename**: Set a custom filename for your documentation.
+- **Export Directory**: Browse or enter a custom directory path.
+- **Preview**: Enable/disable preview before saving.
+
+## Project Documentation
+
+When exporting documentation for the entire project through the status bar button, a comprehensive document is created, including:
+
+- Overall project information
+- Statistics of indexed files
+- Grouped list of files with documentation by directories
+
+Exporting project documentation is only available if the project contains indexed files.
 
 ## Installation & Building
 

@@ -21,7 +21,6 @@ async function indexPath(currentPath, outputChannel, customIgnorePatterns = []) 
   // Check if current information exists in the index
   if (indexManager.isFileInfoValid(currentPath)) {
     const fileInfo = indexManager.getFileInfo(currentPath);
-    outputChannel.appendLine(`Using cached information for ${currentPath}`);
     return fileInfo;
   }
   

@@ -123,6 +123,18 @@ async function indexFile(currentPath, outputChannel) {
     // Read file content
     const content = await fs.promises.readFile(currentPath, 'utf8');
 
+    // Check if file is empty
+    if (content.trim().length === 0) {
+      console.log(`Skipping empty file: ${currentPath}`);
+      return {
+        filePath: currentPath,
+        docstring: 'Empty file',
+        description: 'Empty file',
+        members: [],
+        timestamp: Date.now()
+      };
+    }
+
     // Check if file is too large (more than 10000 lines)
     const lineCount = content.split('\n').length;
     if (lineCount > 10000) {

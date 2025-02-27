@@ -115,7 +115,7 @@ describe('documentResource', function() {
       delete require.cache[expectedPath];
     }
 
-    // Устанавливаем require.cache для основного пути
+    // Set require.cache for the main path
     require.cache[openaiClientAbs] = { 
       id: openaiClientAbs,
       filename: openaiClientAbs,
@@ -123,7 +123,7 @@ describe('documentResource', function() {
       exports: ChatGPTClient 
     };
 
-    // Если expectedPath найден и отличается, устанавливаем и для него
+    // If expectedPath is found and different, set for it too
     if (expectedPath && expectedPath !== openaiClientAbs) {
       require.cache[expectedPath] = {
         id: expectedPath,
@@ -133,7 +133,7 @@ describe('documentResource', function() {
       };
     }
     
-    // Заменяем зависимости openaiClient в proxyquire, используя абсолютные пути
+    // Replace openaiClient dependencies in proxyquire, using absolute paths
     const proxyquire = require('proxyquire');
     const stubs = {
       'vscode': fakeVscode
@@ -146,10 +146,10 @@ describe('documentResource', function() {
 
     documentGenerator = proxyquire('../documentor/documentGenerator.cjs', stubs);
 
-    // Инжектим замоканный vscode
+    // Inject mocked vscode
     documentGenerator.setVscode(fakeVscode);
 
-    // Добавляем дополнительное мокирование для fileIndexer.cjs
+    // Add additional mocking for fileIndexer.cjs
     const fileIndexerPath = require.resolve('../documentor/indexing/fileIndexer.cjs');
     proxyquire(fileIndexerPath, {
       '../../openaiClient.cjs': ChatGPTClient,

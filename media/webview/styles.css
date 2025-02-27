@@ -1,0 +1,227 @@
+:root {
+    --container-padding: 20px;
+    --input-padding-vertical: 6px;
+    --input-padding-horizontal: 8px;
+    --input-margin-vertical: 4px;
+    --input-margin-horizontal: 0;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    color: var(--vscode-foreground);
+    font-size: var(--vscode-font-size);
+    font-weight: var(--vscode-font-weight);
+    font-family: var(--vscode-font-family);
+    background-color: var(--vscode-editor-background);
+}
+
+.container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--container-padding);
+    box-sizing: border-box;
+}
+
+h1 {
+    color: var(--vscode-titleBar-activeForeground);
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 10px;
+}
+
+h2 {
+    color: var(--vscode-titleBar-activeForeground);
+    font-size: 1.2em;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--vscode-input-foreground);
+}
+
+input[type="text"],
+select {
+    width: 100%;
+    padding: var(--input-padding-vertical) var(--input-padding-horizontal);
+    margin: var(--input-margin-vertical) var(--input-margin-horizontal);
+    border: 1px solid var(--vscode-input-border);
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    outline: none;
+    box-sizing: border-box;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+}
+
+input[type="text"]:focus,
+select:focus {
+    border-color: var(--vscode-focusBorder);
+}
+
+.description {
+    font-size: 0.9em;
+    color: var(--vscode-descriptionForeground);
+    margin-top: 4px;
+    display: block;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+}
+
+/* Styles for sections container */
+.sections-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* Styles for section item */
+.section-item {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.section-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.section-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.section-item label {
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.button {
+    padding: 6px 14px;
+    border: none;
+    cursor: pointer;
+    outline: none;
+    color: var(--vscode-button-foreground);
+    background-color: var(--vscode-button-background);
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    margin-right: 10px;
+}
+
+.button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.button.primary {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.button.secondary {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.directory-input {
+    display: flex;
+    align-items: center;
+}
+
+.directory-input input {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.preview-section {
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid var(--vscode-panel-border);
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.preview-content {
+    padding: 10px;
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-input-border);
+    min-height: 150px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+}
+
+.hidden {
+    display: none;
+}
+
+.path-browser {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 600px;
+    background-color: var(--vscode-editorWidget-background);
+    border: 1px solid var(--vscode-panel-border);
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.directory-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--vscode-input-border);
+    margin-bottom: 15px;
+    padding: 5px;
+}
+
+.directory-item {
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.directory-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.directory-item.selected {
+    background-color: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
+}
+
+.directory-icon {
+    margin-right: 5px;
+} 

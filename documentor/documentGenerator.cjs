@@ -68,6 +68,7 @@ async function documentResource(resource) {
   try {
     // Index the path
     await indexPath(filePath, outputChannel);
+    outputChannel.appendLine(`Indexing completed for: ${filePath}`);
     await documentPath(filePath, outputChannel);
     
     getVscode().window.showInformationMessage(`Documentation successfully created for: ${filePath}`);
@@ -84,7 +85,10 @@ async function documentResource(resource) {
  */
 async function getDocumentation(resource) {
   const filePath = resource.fsPath;
-  await indexPath(filePath, getOutputChannel());
+  const outputChannel = getOutputChannel();
+  outputChannel.show(true); // Open channel
+  await indexPath(filePath, outputChannel);
+  outputChannel.appendLine(`Indexing completed for: ${filePath}`);
   return indexManager.getFileInfo(filePath);
 }
 

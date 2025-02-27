@@ -1,25 +1,33 @@
 const { minimatch } = require('minimatch');
 
 const defaultIgnorePatterns = [
-    // Системные директории и файлы
+    // System directories and files
     'node_modules/**',
     '.git/**',
     
-    // Временные файлы и кэш
+    // Temporary files and cache
     '**/*.tmp',
     '**/*.temp',
+    '**/__pycache__',
     '**/__pycache__/**',
+    '.cache',
     '.cache/**',
     
-    // Бинарные и сгенерированные файлы
+    // Binary and generated files
     'dist/**',
+    'build',
     'build/**',
     'out/**',
     '**/*.min.*',
     '**/*.bundle.*',
     '**/*.map',
     
-    // Медиа и бинарные файлы
+    // Python egg-info directories
+    '**/*.egg-info/**',
+    '*.egg-info',
+
+    
+    // Media and binary files
     '**/*.jpg',
     '**/*.jpeg',
     '**/*.png',
@@ -36,11 +44,13 @@ const defaultIgnorePatterns = [
     '**/*.gz',
     '**/*.rar',
     
-    // Логи
+    // Logs
     '**/*.log',
     'logs/**',
     
-    // Скрытые файлы и директории
+    // Hidden files and directories
+    '.*',
+    '.*/**',
     '**/.*',
     '**/.*/**'
 ];
@@ -49,6 +59,7 @@ function isPathIgnored(path, customPatterns = []) {
     const patterns = [...defaultIgnorePatterns, ...customPatterns];
     return patterns.some(pattern => 
         minimatch(path, pattern, { dot: true, matchBase: true })
+        || minimatch(path, '**/' + pattern, { dot: true, matchBase: true })
     );
 }
 

@@ -3,9 +3,11 @@
 const { documentPath } = require('./documentPath.cjs');
 const { documentDirectory } = require('./documentDirectory.cjs');
 const { documentFile } = require('./documentFile.cjs');
+const { generateStandardProjectDocumentation } = require('./documentProject.cjs');
 
 module.exports = {
   documentPath,
   documentDirectory,
-  documentFile
+  documentFile,
+  generateStandardProjectDocumentation
 }; 

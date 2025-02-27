@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export README.md</title>
+    <link rel="stylesheet" href="{{cssUri}}">
+    <script src="{{mainJsUri}}" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Make section items clickable to toggle checkbox
+            document.querySelectorAll('.section-item').forEach(function(item) {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', function(e) {
+                    // Prevent toggling when clicking directly on checkbox or label
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                        const checkbox = this.querySelector('input[type="checkbox"]');
+                        checkbox.checked = !checkbox.checked;
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Export README.md</h1>
+        
+        <form id="export-readme-form">
+            <div class="form-group">
+                <label for="full-path">File path:</label>
+                <div class="directory-input">
+                    <input type="text" id="full-path" name="fullPath" value="{{defaultExportPath}}">
+                    <button type="button" id="browse-dir" class="button">Browse...</button>
+                </div>
+                <small class="description">Specify the full path, including the filename</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="sections">Select sections to include in README:</label>
+                <div class="sections-container">
+                    <div class="section-item">
+                        <input type="checkbox" id="section-project-title" name="sections" value="project-title" checked>
+                        <label for="section-project-title">Project title and description</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-overview" name="sections" value="overview" checked>
+                        <label for="section-overview">Introduction/Overview</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-features" name="sections" value="features" checked>
+                        <label for="section-features">Features/Capabilities</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-requirements" name="sections" value="requirements" checked>
+                        <label for="section-requirements">Requirements</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-installation" name="sections" value="installation" checked>
+                        <label for="section-installation">Installation</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-usage" name="sections" value="usage-examples" checked>
+                        <label for="section-usage">Usage/Examples</label>
+                        <small>(basic usage and code samples)</small>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-configuration" name="sections" value="configuration" checked>
+                        <label for="section-configuration">Configuration/Setup</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-api" name="sections" value="api">
+                        <label for="section-api">API Documentation</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-testing" name="sections" value="testing">
+                        <label for="section-testing">Testing</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-deployment" name="sections" value="deployment">
+                        <label for="section-deployment">Deployment</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-structure" name="sections" value="structure">
+                        <label for="section-structure">Project structure</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-license" name="sections" value="license">
+                        <label for="section-license">License</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-contributing" name="sections" value="contributing">
+                        <label for="section-contributing">Contributing</label>
+                    </div>
+                    <div class="section-item">
+                        <input type="checkbox" id="section-authors" name="sections" value="authors" checked>
+                        <label for="section-authors">Authors/Contacts</label>
+                    </div>
+                </div>
+                <small class="description">Select sections that will be included in README.md</small>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" id="cancel-button" class="button secondary">Cancel</button>
+                <button type="submit" id="export-button" class="button primary">Export</button>
+            </div>
+        </form>
+        
+        <div id="path-browser" class="path-browser hidden">
+            <h2>Select directory:</h2>
+            <div class="directory-list" id="directory-list">
+                <!-- Directories will be populated here -->
+            </div>
+            <div class="button-group">
+                <button type="button" id="browser-cancel" class="button secondary">Cancel</button>
+                <button type="button" id="browser-select" class="button primary">Select</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

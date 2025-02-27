@@ -116,7 +116,7 @@ async function isPythonPackage(directoryPath) {
     await fs.promises.access(initPyPath);
     return true;
   } catch (error) {
-    // Если __init__.py отсутствует, проверяем, что все файлы в директории имеют расширение .py
+    // If __init__.py is missing, check if all files in the directory have .py extension
     try {
       const entries = await fs.promises.readdir(directoryPath, { withFileTypes: true });
       const files = entries.filter(entry => entry.isFile());

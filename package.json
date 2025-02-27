@@ -8,61 +8,34 @@
   "engines": {
     "vscode": "^1.60.0"
   },
+  "categories": [
+    "Other",
+    "Documentation"
+  ],
   "main": "./extension.js",
   "activationEvents": [
-    "onCommand:extension.documentor",
-    "onCommand:extension.exportDocumentation",
-    "onCommand:extension.clearDocumentationIndex",
-    "onCommand:extension.listIndexedFiles"
+    "onStartupFinished",
+    "onCommand:extension.documentor"
   ],
   "contributes": {
     "commands": [
       {
         "command": "extension.documentor",
         "title": "Document Code"
-      },
-      {
-        "command": "extension.exportDocumentation",
-        "title": "Export Documentation"
-      },
-      {
-        "command": "extension.clearDocumentationIndex",
-        "title": "Clear Documentation Index"
-      },
-      {
-        "command": "extension.listIndexedFiles",
-        "title": "List All Indexed Files"
-      }
-    ],
-    "submenus": [
-      {
-        "id": "documentor.submenu",
-        "label": "Documentor"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "submenu": "documentor.submenu",
-          "group": "navigation"
-        }
-      ],
-      "documentor.submenu": [
-        {
+          "when": "resourceLangId || explorerResourceIsFolder",
           "command": "extension.documentor",
-          "group": "navigation"
-        },
-        {
-          "command": "extension.exportDocumentation",
-          "group": "navigation"
+          "group": "2_workspace"
         }
       ],
       "commandPalette": [
         {
-          "command": "extension.clearDocumentationIndex"
-        },
-        {
-          "command": "extension.listIndexedFiles"
+          "command": "extension.documentor",
+          "when": "editorLangId"
         }
       ]
     },
@@ -81,12 +54,6 @@
           "type": "string",
           "default": "gpt-4o-mini",
           "description": "Enter the model name"
-        },
-        "defaultExportPath": {
-          "order": 3,
-          "type": "string",
-          "default": "${workspaceFolder}/documentation",
-          "description": "Default path for exporting documentation"
         }
       }
     }
@@ -111,5 +78,13 @@
   "dependencies": {
     "openai": "^4.85.4",
     "minimatch": "^9.0.3"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": true
+    }
   }
 }
