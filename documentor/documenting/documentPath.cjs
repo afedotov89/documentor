@@ -8,24 +8,19 @@ const { indexManager } = require('../indexing/indexManager.cjs');
  * @param {string} currentPath - Path to the file or directory
  * @param {object} outputChannel - VSCode output channel
  * @param {boolean} recursive - Process directory contents recursively
+ * @param {number} [currentDepth=0] - Current recursion depth
+ * @param {number} [maxDepth=10] - Maximum recursion depth
  * @returns {Promise<Object>} - Documentation result
  */
-async function documentPath(currentPath, outputChannel, recursive = true) {
-  // Get path information from the index
-  const fileInfo = indexManager.getFileInfo(currentPath);
-  
-  if (!fileInfo) {
-    outputChannel.appendLine(`Information for "${currentPath}" not found in the index`);
-    return { success: false, message: 'Information not found in the index' };
-  }
-  
+async function documentPath(currentPath, outputChannel, recursive = true, currentDepth = 0, maxDepth = 10) {
   try {
+    // Get file stats to determine file type
     const stats = await fs.promises.stat(currentPath);
     
     if (stats.isDirectory()) {
-      return documentDirectory(currentPath, fileInfo, outputChannel, recursive);
+      return documentDirectory(currentPath, outputChannel, recursive, currentDepth, maxDepth);
     } else if (stats.isFile()) {
-      return documentFile(currentPath, fileInfo, outputChannel);
+      return documentFile(currentPath, outputChannel);
     } else {
       throw new Error('Unsupported file type');
     }

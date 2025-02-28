@@ -65,7 +65,7 @@ async function execute(context) {
   };
   
   try {
-    // Получаем общий output channel вместо создания нового
+    // Get the shared output channel instead of creating a new one
     const documentGenerator = require('../documentGenerator.cjs');
     const outputChannel = documentGenerator.getOutputChannel();
     outputChannel.show();

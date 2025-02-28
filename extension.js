@@ -13,11 +13,12 @@ const fs = require('fs');
 const documentor = require('./documentor/documentGenerator.cjs');
 const { indexManager } = require('./documentor/indexing/indexManager.cjs');
 const { generateStandardProjectDocumentation } = require('./documentor/documenting/index.cjs');
+const { registerCleanupLocksCommand } = require('./documentor/commands/cleanupLocks.cjs');
 
 // Global variables
 let exportPanel = undefined;
 let statusBarItem = undefined;
-// Глобальная переменная будет инициализирована через documentor.getOutputChannel
+// Global variable will be initialized via documentor.getOutputChannel
 
 /**
  * Exports documentation for the current workspace/project
@@ -170,7 +171,7 @@ async function exportReadmeWithWebView(resource) {
  * @param {boolean} isProject - Flag indicating if we're exporting project documentation
  */
 async function handleExportFromWebView(resource, config, isProject = true) {
-  // Получаем единый output channel
+  // Get the unified output channel
   const outputChannel = documentor.getOutputChannel();
   
   // Display output channel when starting generation
@@ -304,6 +305,25 @@ function activate(context) {
   // Set the output channel in documentor module
   documentor.setOutputChannel(outputChannel);
   
+  // Initialize settings with default formats if not already set
+  const { getDefaultSettings } = require('./documentor/config/defaultSettings.cjs');
+  const config = vscode.workspace.getConfiguration('documentor');
+  const defaultSettings = getDefaultSettings();
+  
+  // Set default documentation formats if they're not already configured
+  if (!config.get('docFormats.python')) {
+    config.update('docFormats.python', defaultSettings.docFormats.python, vscode.ConfigurationTarget.Global);
+  }
+  if (!config.get('docFormats.javascript')) {
+    config.update('docFormats.javascript', defaultSettings.docFormats.javascript, vscode.ConfigurationTarget.Global);
+  }
+  if (!config.get('docFormats.java')) {
+    config.update('docFormats.java', defaultSettings.docFormats.java, vscode.ConfigurationTarget.Global);
+  }
+  if (!config.get('docFormats.cpp')) {
+    config.update('docFormats.cpp', defaultSettings.docFormats.cpp, vscode.ConfigurationTarget.Global);
+  }
+  
   // Create status bar button
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   statusBarItem.text = "$(book) Export Docs";
@@ -323,6 +343,39 @@ function activate(context) {
     await showDocumentorMenu(context);
   });
   context.subscriptions.push(showMenuCmd);
+  
+  // Register command for cleaning up stale locks
+  const cleanupLocksCmd = registerCleanupLocksCommand(context);
+  context.subscriptions.push(cleanupLocksCmd);
+  
+  // Run initial cleanup of locks during extension activation
+  const { lockManager } = require('./documentor/utils/lockManager');
+  lockManager.cleanupStaleLocks(1800000) // Locks older than 30 minutes
+    .then(result => {
+      if (result.removed > 0) {
+        console.log(`Initial cleanup removed ${result.removed} stale locks`);
+      }
+    })
+    .catch(error => {
+      console.error('Error during initial lock cleanup:', error);
+    });
+  
+  // Configure periodic cleanup of locks every 10 minutes
+  const cleanupInterval = setInterval(() => {
+    // Use a smaller threshold for periodic cleanup - 15 minutes
+    lockManager.cleanupStaleLocks(900000) // 900000 ms = 15 minutes
+      .then(result => {
+        if (result.removed > 0) {
+          console.log(`Periodic cleanup removed ${result.removed} stale locks`);
+        }
+      })
+      .catch(error => {
+        console.error('Error during periodic lock cleanup:', error);
+      });
+  }, 600000); // 600000 ms = 10 minutes
+  
+  // Make sure the interval will be cleared when the extension is deactivated
+  context.subscriptions.push({ dispose: () => clearInterval(cleanupInterval) });
 }
 
 /**
@@ -335,7 +388,7 @@ async function showDocumentorMenu(context) {
       label: "$(markdown) README.md", 
       description: "Export documentation to README.md",
       action: "readme"
-    },
+    }
     // { 
     //   label: "$(book) Full documentation", 
     //   description: "Export full project documentation",
@@ -349,22 +402,19 @@ async function showDocumentorMenu(context) {
   ];
 
   const selected = await vscode.window.showQuickPick(options, { 
-    placeHolder: 'Select documentation export type' 
+    placeHolder: "Select a documentation action"
   });
 
-  if (!selected) {
-    return; // User cancelled selection
-  }
+  if (!selected) return;
 
-  // Process user selection
-  switch (selected.action) {
-    case 'readme':
-    case 'full':
-    case 'custom':
-      // All documentation types are exported via WebView with README.md
-      await exportProjectDocumentation();
-      break;
+  if (selected.action === "readme") {
+    await exportProjectDocumentation();
   }
+  // else if (selected.action === "full") {
+  //   // Handle full documentation export
+  // } else if (selected.action === "custom") {
+  //   // Handle custom format
+  // }
 }
 
 

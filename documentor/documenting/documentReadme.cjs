@@ -50,7 +50,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Импортируем функцию getOutputChannel из documentGenerator
+// Import getOutputChannel function from documentGenerator
 let getOutputChannel;
 try {
   const documentGenerator = require('../documentGenerator.cjs');
@@ -378,7 +378,7 @@ async function identifyNeededAdditionalInfo(sectionKey, sectionTitle, currentCon
     response_format: { "type": "json_object" }
   });
   
-  // Объявляем components до try-catch блока
+  // Declare components before the try-catch block
   let components = [];
   let needMoreInfo = false;
   
@@ -429,100 +429,93 @@ async function identifyNeededAdditionalInfo(sectionKey, sectionTitle, currentCon
  * @returns {string} Finalized section content
  */
 async function deepenSectionContent(sectionKey, sectionTitle, initialContent, indexData, projectPath, client, maxIterations = 3, allSections = {}, originalSections = {}, sectionOrder = []) {
-  // Получаем общий output channel
+  // Get the common output channel
   const outputChannel = getOutputChannel();
   
-  // Ensure outputChannel has appendLine method
-  const logger = {
-    appendLine: (message) => {
-      if (outputChannel && typeof outputChannel.appendLine === 'function') {
-        outputChannel.appendLine(message);
-      } else {
-        console.log(message);
-      }
-    }
-  };
-
+  // Show output channel to user
+  if (outputChannel && typeof outputChannel.show === 'function') {
+    outputChannel.show();
+  }
+  
   let currentContent = initialContent;
   let iterations = 0;
   let exploredComponents = new Set();
   
-  // Получаем путь к README файлу
+  // Get the path to the README file
   const readmePath = path.join(projectPath, 'README.md');
   
-  // Функция для обновления README файла с использованием assembleReadme
-  const updateReadmeWithCurrentSection = async (updatedSectionContent) => {
+  // Helper function for updating README file
+  const updateReadmeFile = async (updatedSectionContent) => {
     try {
-      // Обновляем текущую секцию в наборе всех секций
+      // Update the current section in the set of all sections
       const updatedSections = { ...allSections };
       updatedSections[sectionKey] = updatedSectionContent;
       
-      // Используем assembleReadme для создания содержимого файла
+      // Use assembleReadme to create the file content
       const readmeContent = assembleReadme(updatedSections, originalSections, sectionOrder);
       
-      // Записываем в файл
+      // Write to file
       fs.writeFileSync(readmePath, readmeContent, 'utf8');
-      logger.appendLine(`README.md updated with improved content for section: ${sectionTitle}`);
     } catch (error) {
-      logger.appendLine(`Error updating README.md with improved section ${sectionTitle}: ${error.message}`);
+      console.error(`Error updating README.md with improved section ${sectionTitle}: ${error.message}`);
     }
   };
   
   while (iterations < maxIterations) {
     // Ask what additional components we need to explore
-    logger.appendLine(`Iteration ${iterations + 1}/${maxIterations} for section ${sectionTitle}`);
+    console.log(`Iteration ${iterations + 1}/${maxIterations} for section ${sectionTitle}`);
     const neededInfoPrompt = createNeededInfoPrompt(sectionKey, sectionTitle, currentContent, indexData);
     const infoResponse = await client.answer(neededInfoPrompt, { 
       temperature: 0.3,
       response_format: { "type": "json_object" }
     });
     
-    // Объявляем componentsToExplore до try-catch блока
+    // Declare componentsToExplore before the try-catch block
     let componentsToExplore = [];
     
     // Parse JSON response
     let parsedInfoResponse;
     try {
       parsedInfoResponse = JSON.parse(infoResponse);
-      // Извлекаем нужную информацию из JSON-ответа
+      // Extract the needed information from the JSON response
       const analysis = parsedInfoResponse.analysis;
       
       if (!analysis || typeof analysis !== 'object') {
-        logger.appendLine(`Warning: Invalid JSON structure, missing 'analysis' object`);
+        console.error('Warning: Invalid JSON structure, missing \'analysis\' object');
         throw new Error('Invalid JSON structure');
       }
       
-      // Проверяем необходимость дополнительной информации
+      // Check if additional information is needed
       const needMoreInfo = analysis.need_more_info === 'Yes';
       if (!needMoreInfo) {
-        logger.appendLine(`No additional information needed for section ${sectionTitle}`);
+        console.log(`No additional information needed for section ${sectionTitle}`);
         break;
       }
       
-      // Получаем список компонентов для исследования
+      // Get the list of components to explore
       componentsToExplore = Array.isArray(analysis.components) ? 
                                   analysis.components.filter(c => c && typeof c === 'string') : 
                                   [];
       
       if (componentsToExplore.length === 0) {
-        logger.appendLine(`No specific components identified for section ${sectionTitle}`);
+        console.log(`No specific components identified for section ${sectionTitle}`);
         break;
       }
       
     } catch (error) {
       // Fallback to direct string parsing if JSON parsing fails
-      logger.appendLine(`Warning: JSON parsing failed (${error.message}), using direct string parsing`);
+      console.error(`Warning: JSON parsing failed (${error.message}), using direct string parsing`);
       
       // Original string parsing logic
       const needMoreInfo = /NEED_MORE_INFO:\s*Yes/i.test(infoResponse);
       if (!needMoreInfo) {
-        logger.appendLine(`No additional information needed for section ${sectionTitle}`);
+        console.log(`No additional information needed for section ${sectionTitle}`);
         break;
       }
       
       const componentsMatch = infoResponse.match(/COMPONENTS:\s*([^]*?)(?=\nREASON:|$)/i);
       if (!componentsMatch || !componentsMatch[1]) {
-        logger.appendLine(`No specific components identified for section ${sectionTitle}`);
+        console.log(`No specific components identified for section ${sectionTitle}`);
         break;
       }
       
@@ -535,7 +528,7 @@ async function deepenSectionContent(sectionKey, sectionTitle, initialContent, in
     // If no more components to explore or we've explored all suggested components, we're done
     if (componentsToExplore.length === 0 || 
         componentsToExplore.every(comp => exploredComponents.has(comp))) {
-      logger.appendLine(`All suggested components already explored for section ${sectionTitle}`);
+      console.log(`All suggested components already explored for section ${sectionTitle}`);
       break;
     }
     
@@ -547,7 +540,7 @@ async function deepenSectionContent(sectionKey, sectionTitle, initialContent, in
       
       // Mark this component as explored
       exploredComponents.add(component);
-      logger.appendLine(`Exploring component: ${component}`);
+      console.log(`Exploring component: ${component}`);
       
       // Find the file path for this component
       const componentPath = path.join(projectPath, component);
@@ -581,8 +574,9 @@ async function deepenSectionContent(sectionKey, sectionTitle, initialContent, in
       
       logger.appendLine(`Updated content for section ${sectionTitle}`);
       
-      // Обновляем README.md с улучшенным содержимым секции
-      await updateReadmeWithCurrentSection(currentContent);
+      // Update the current section in the set of all sections
+      // Update README.md with improved section content
+      await updateReadmeFile(currentContent);
     } else {
       logger.appendLine(`No additional data found for requested components in section ${sectionTitle}`);
       break;
@@ -715,10 +709,10 @@ function assembleReadme(generatedSections, originalSections, sectionOrder) {
  * @returns {string} Generated README content
  */
 async function generateProjectReadme(projectPath, sectionsToGenerate = [], options = {}) {
-  // Получаем общий output channel
+  // Get the common output channel
   const outputChannel = getOutputChannel();
   
-  // Показываем пользователю output channel
+  // Show output channel to user
   if (outputChannel && typeof outputChannel.show === 'function') {
     outputChannel.show();
   }
@@ -772,7 +766,7 @@ async function generateProjectReadme(projectPath, sectionsToGenerate = [], optio
   // Generate new content for requested sections
   const generatedSections = { ...originalSections };
   
-  // Вспомогательная функция для обновления README файла
+  // Helper function for updating README file
   const updateReadmeFile = async () => {
     try {
       const readmeContent = assembleReadme(generatedSections, originalSections, sectionOrder);
@@ -811,7 +805,7 @@ async function generateProjectReadme(projectPath, sectionsToGenerate = [], optio
       const parsedResponse = JSON.parse(response);
       // Extract the content from the JSON response
       if (parsedResponse && typeof parsedResponse === 'object') {
-        // Используем первое свойство объекта, обычно 'content'
+        // Use the first property of the object, usually 'content'
         const contentKey = Object.keys(parsedResponse)[0];
         if (contentKey && parsedResponse[contentKey]) {
           contentText = parsedResponse[contentKey];
@@ -830,7 +824,7 @@ async function generateProjectReadme(projectPath, sectionsToGenerate = [], optio
     
     const initialContent = contentText.trim();
     
-    // Обновляем секцию с initialContent и обновляем README файл
+    // Update section with initialContent and update README file
     generatedSections[sectionKey] = initialContent;
     outputChannel.appendLine(`Updating README.md with initial content for section: ${sectionTitle}`);
     await updateReadmeFile();
@@ -854,11 +848,11 @@ async function generateProjectReadme(projectPath, sectionsToGenerate = [], optio
         );
     }
     
-    // Обновляем секцию финальным содержимым
+    // Update section with final content
     generatedSections[sectionKey] = finalContent;
     
-    // Не обновляем файл здесь, т.к. он уже был обновлен в последней итерации deepenSectionContent
-    // Логируем только информацию о завершении
+    // Don't update the file here, as it was already updated in the last iteration of deepenSectionContent
+    // Only log completion information
     outputChannel.appendLine(`Completed generation for section: ${sectionTitle}`);
   }
   

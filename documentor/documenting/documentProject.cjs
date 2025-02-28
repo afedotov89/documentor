@@ -5,7 +5,7 @@
 const pathModule = require('path');
 const fs = require('fs');
 
-// Импортируем функцию getOutputChannel из documentGenerator
+// Import getOutputChannel function from documentGenerator
 let getOutputChannel;
 try {
   const documentGenerator = require('../documentGenerator.cjs');
@@ -66,10 +66,10 @@ try {
  * @returns {string} Generated documentation
  */
 async function generateStandardProjectDocumentation(resource, fileInfo, sections = []) {
-  // Получаем общий output channel
+  // Get the shared output channel
   const outputChannel = getOutputChannel();
   
-  // Показываем пользователю output channel
+  // Show output channel to the user
   if (outputChannel && typeof outputChannel.show === 'function') {
     outputChannel.show();
   }
@@ -91,7 +91,7 @@ async function generateStandardProjectDocumentation(resource, fileInfo, sections
   logger.appendLine(`Starting README generation for ${workspaceName}...`);
   logger.appendLine(`Sections to generate: ${sections.join(', ') || 'all'}`);
   
-  // Настройки для generateProjectReadme
+  // Settings for generateProjectReadme
   const options = {
     sectionTitles: {
       'project-title': 'Project Description',
@@ -128,7 +128,7 @@ async function generateStandardProjectDocumentation(resource, fileInfo, sections
     maxIterations: 3
   };
   
-  // Используем функцию из documentReadme.cjs
+  // Use function from documentReadme.cjs
   return readmeFunctions.generateProjectReadme(projectPath, sections, options);
 }
 

@@ -2,6 +2,18 @@ const fs = require('fs');
 const pathModule = require('path');
 const { indexManager } = require('./indexManager.cjs');
 const { isPathIgnored } = require('../config/ignorePatterns.cjs');
+const { lockManager } = require('../utils/lockManager');
+const path = require('path');
+const os = require('os');
+
+// Cleanup of stale locks when loading the module
+(async function() {
+  try {
+    await lockManager.cleanupStaleLocks();
+  } catch (error) {
+    console.error('Error cleaning up stale locks:', error);
+  }
+})();
 
 // Wrap the vscode module require to support test environment
 let _vscode = null;
@@ -36,7 +48,7 @@ function getVscode() {
 }
 
 async function indexDirectory(currentPath, outputChannel, customIgnorePatterns = []) {
-    
+  // First process all subdirectories and files to gather information
   const fsPromises = fs.promises;
   const entries = await fsPromises.readdir(currentPath);
   const members = [];
@@ -75,39 +87,73 @@ async function indexDirectory(currentPath, outputChannel, customIgnorePatterns =
     }
   }
   
+  // Create a unique lock file path for the directory
+  const normalizedPath = currentPath.replace(/[\/\\:]/g, '_');
+  // Add a hash of the absolute path for uniqueness
+  const hashPath = require('crypto').createHash('md5').update(currentPath).digest('hex').substring(0, 8);
+  const lockFilePath = path.join(os.tmpdir(), `documentor_index_dir_${hashPath}_${normalizedPath}.lock`);
+  
+  let release;
+  try {
+    // Get a lock through the new module
+    release = await lockManager.acquireLock(currentPath, 'documentor_index_dir', {
+      retries: 5,
+      stale: 600000 // 10 minutes for directories
+    });
+    
+    outputChannel.appendLine(`Acquired directory lock for indexing: ${currentPath}`);
 
-  // Check if current information exists in the index
-  if (indexManager.isFileInfoValid(currentPath) && indexManager.getFileInfo(currentPath).updateTime >= maxUpdateTime) {
-    const fileInfo = indexManager.getFileInfo(currentPath);
-    console.log(`Using cached description for directory ${currentPath}`);
-    return fileInfo;
-  }  
-  outputChannel.appendLine(`Indexing directory: ${currentPath}`);
+    // Check if current information exists in the index
+    if (indexManager.isFileInfoValid(currentPath) && 
+        indexManager.getFileInfo(currentPath) && 
+        indexManager.getFileInfo(currentPath).timestamp >= maxUpdateTime) {
+      const fileInfo = indexManager.getFileInfo(currentPath);
+      console.log(`Using cached description for directory ${currentPath}`);
+      return fileInfo;
+    }  
+    outputChannel.appendLine(`Indexing directory: ${currentPath}`);
 
-  const contentDescription = `A project's subdirectory along the path \`${currentPath}\` 
- that contains the following members:\n${members.map(member => `- ${member.type}: ${member.name} - ${member.description}`).join('\n')}`;
+    const contentDescription = `A project's subdirectory along the path \`${currentPath}\` 
+   that contains the following members:\n${members.map(member => `- ${member.type}: ${member.name} - ${member.description}`).join('\n')}`;
 
-  const configSettings = getVscode().workspace.getConfiguration();
-  const apiKey = configSettings.get('OpenAI API Key');
-  const model = configSettings.get('model');
-  if (!apiKey) {
-    outputChannel.appendLine("Error: API key is missing in the settings.");
-    getVscode().window.showErrorMessage("Error: API key is missing in the settings.");
-    throw new Error("API key is missing in the settings.");
+    const configSettings = getVscode().workspace.getConfiguration();
+    const apiKey = configSettings.get('OpenAI API Key');
+    const model = configSettings.get('model');
+    if (!apiKey) {
+      outputChannel.appendLine("Error: API key is missing in the settings.");
+      getVscode().window.showErrorMessage("Error: API key is missing in the settings.");
+      throw new Error("API key is missing in the settings.");
+    }
+    
+    // Change import using require instead of import
+    const ChatGPTClient = require('../../openaiClient.cjs');
+    const client = new ChatGPTClient(apiKey, model);
+
+    const { answerDocstring, generateDirectoryDescription } = require('../utils');
+    const response = await answerDocstring(client, contentDescription);
+    const description = await generateDirectoryDescription(client, currentPath, members);
+
+    // Save to index
+    const info = indexManager.updateFileInfo(currentPath, response, description, members); 
+    
+    return info;
+  } catch (error) {
+    if (error.code === 'ELOCKED') {
+      console.log(`Directory ${currentPath} is currently being indexed by another process`);
+      return null;
+    }
+    throw error;
+  } finally {
+    if (release) {
+      // Release the lock when done
+      try {
+        await release();
+        console.log(`Released directory lock for indexing: ${currentPath}`);
+      } catch (error) {
+        console.error(`Failed to release directory lock for ${currentPath}:`, error);
+      }
+    }
   }
-  
-  // Change import using require instead of import
-  const ChatGPTClient = require('../../openaiClient.cjs');
-  const client = new ChatGPTClient(apiKey, model);
-
-  const { answerDocstring, generateDirectoryDescription } = require('../utils');
-  const response = await answerDocstring(client, contentDescription);
-  const description = await generateDirectoryDescription(client, currentPath, members);
-
-  // Save to index
-  const info = indexManager.updateFileInfo(currentPath, response, description, members); 
-  
-  return info;
 }
 
 module.exports = { indexDirectory }; 

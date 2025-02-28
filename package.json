@@ -54,6 +54,48 @@
           "type": "string",
           "default": "gpt-4o-mini",
           "description": "Enter the model name"
+        },
+        "documentor.docFormats.python": {
+          "order": 3,
+          "type": "string",
+          "enum": [
+            "reStructuredText (reST)",
+            "Google style",
+            "NumPy/SciPy style",
+            "Epytext",
+            "PEP 257"
+          ],
+          "default": "reStructuredText (reST)",
+          "description": "Documentation format for Python files"
+        },
+        "documentor.docFormats.javascript": {
+          "order": 4,
+          "type": "string",
+          "enum": [
+            "JSDoc",
+            "TypeDoc"
+          ],
+          "default": "JSDoc",
+          "description": "Documentation format for JavaScript/TypeScript files"
+        },
+        "documentor.docFormats.java": {
+          "order": 5,
+          "type": "string",
+          "enum": [
+            "Javadoc"
+          ],
+          "default": "Javadoc",
+          "description": "Documentation format for Java files"
+        },
+        "documentor.docFormats.cpp": {
+          "order": 6,
+          "type": "string",
+          "enum": [
+            "Doxygen",
+            "Natural Docs"
+          ],
+          "default": "Doxygen",
+          "description": "Documentation format for C/C++ files"
         }
       }
     }
@@ -76,8 +118,9 @@
   },
   "license": "MIT",
   "dependencies": {
+    "minimatch": "^9.0.3",
     "openai": "^4.85.4",
-    "minimatch": "^9.0.3"
+    "proper-lockfile": "^4.1.2"
   },
   "capabilities": {
     "untrustedWorkspaces": {

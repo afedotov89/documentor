@@ -35,7 +35,7 @@ function getBaseIndexDirectory() {
     return storageUri.fsPath;
   }
   
-  // Для тестов используем временную директорию
+  // Use a temporary directory for tests
   const tempDir = process.env.TEMP || process.env.TMP || '/tmp';
   return path.join(tempDir, 'documentor-indexes');
 }
@@ -156,13 +156,12 @@ class IndexManager {
   /**
    * Adds or updates information about a file or directory in the index
    * @param {string} filePath - Path to the file or directory
-   * @param {string} docstring - Documentation (docstring)
-   * @param {string} description - Detailed description
+   * @param {string|Object} docstringOrUpdateInfo - Documentation (docstring) or object containing updated properties
+   * @param {string} [description] - Detailed description
    * @param {Array<Object>} [members] - Array of objects containing the type and short description of the file or directory contents
-   * The isDirectory flag indicates whether the path is a directory
    * @returns {Object} - Object with information about the file or directory
    */
-  updateFileInfo(filePath, docstring, description, members) {
+  updateFileInfo(filePath, docstringOrUpdateInfo, description, members) {
     const normalizedPath = path.normalize(filePath);
     const { projectIndexDir, indexFilePath } = this.getIndexFilePaths(normalizedPath);
     
@@ -172,36 +171,48 @@ class IndexManager {
     // Create the file directory if it doesn't exist
     this.ensureDirExists(path.dirname(indexFilePath));
     
-    // Determine if the path is a directory
-    let isDirectory = false;
-    if (fs.existsSync(normalizedPath)) {
-      try {
-        isDirectory = fs.lstatSync(normalizedPath).isDirectory();
-      } catch (error) {
-        console.error(`Error determining file type: ${error.message}`);
-      }
-    }
+    // Get existing file information
+    let fileInfo = this.getFileInfo(normalizedPath) || {};
     
-    // Create an object with metadata
-    const fileInfo = {
-      filePath: normalizedPath,
-      docstring: docstring || '',
-      description: description || '',
-      members: members || [],
-      isDirectory: isDirectory,
-      timestamp: Date.now()
-    };
+    // Check if second parameter is an object with updates or a docstring
+    if (typeof docstringOrUpdateInfo === 'object' && docstringOrUpdateInfo !== null) {
+      // Second parameter is an object with updates
+      fileInfo = { ...fileInfo, ...docstringOrUpdateInfo };
+    } else {
+      // Second parameter is a docstring (string)
+      // Determine if the path is a directory
+      let isDirectory = false;
+      if (fs.existsSync(normalizedPath)) {
+        try {
+          isDirectory = fs.lstatSync(normalizedPath).isDirectory();
+        } catch (error) {
+          console.error(`Error determining file type: ${error.message}`);
+        }
+      }
+      
+      // Update or set properties
+      fileInfo = {
+        ...fileInfo,
+        filePath: normalizedPath,
+        docstring: docstringOrUpdateInfo || fileInfo.docstring || '',
+        description: description || fileInfo.description || '',
+        members: members || fileInfo.members || [],
+        isDirectory: isDirectory,
+        timestamp: Date.now()
+      };
+    }
     
     try {
       // Write information to the file
       fs.writeFileSync(indexFilePath, JSON.stringify(fileInfo, null, 2), 'utf8');
+      return fileInfo;
     } catch (error) {
       console.error(`Error saving metadata: ${error.message}`);
       if (vscode.window) {
         vscode.window.showErrorMessage(`Failed to save metadata: ${error.message}`);
       }
+      return null;
     }
-    return fileInfo;
   }
 
   /**
@@ -237,7 +248,7 @@ class IndexManager {
 
     try {
       const stats = fs.statSync(filePath);
-      const lastModifiedTime = stats.mtimeMs; // Get the last modified time of the file
+      const lastModifiedTime = Math.floor(stats.mtimeMs); // Get the last modified time of the file as an integer
 
       return lastModifiedTime <= fileInfo.timestamp;
     } catch (error) {

@@ -81,10 +81,7 @@ async function documentResource(resource) {
     // Log start of documentation process
     outputChannel.appendLine(`Starting documentation for ${resource.fsPath}`);
     
-    // Index the resource first
-    await indexPath(resource.fsPath, outputChannel);
-    
-    // Then document it
+    // Then document it (indexing will happen inside documentPath functions)
     const docs = await documentPath(resource.fsPath, outputChannel);
     outputChannel.appendLine('Documentation completed successfully.');
     
