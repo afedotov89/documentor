@@ -73,19 +73,19 @@ function setOutputChannel(channel) {
  * @returns {Promise<void>}
  */
 async function documentResource(resource) {
+  const outputChannel = getOutputChannel();
   try {
     // Get the output channel and show it
-    const outputChannel = getOutputChannel();
     outputChannel.show();
     
     // Log start of documentation process
-    outputChannel.appendLine(`Starting documentation for ${resource.fsPath}...`);
+    outputChannel.appendLine(`Starting documentation for ${resource.fsPath}`);
     
     // Index the resource first
-    await indexPath(resource);
+    await indexPath(resource.fsPath, outputChannel);
     
     // Then document it
-    const docs = await documentPath(resource);
+    const docs = await documentPath(resource.fsPath, outputChannel);
     outputChannel.appendLine('Documentation completed successfully.');
     
     return docs;
@@ -94,7 +94,8 @@ async function documentResource(resource) {
     if (error.stack) {
       console.error(error.stack);
     }
-    
+    outputChannel.appendLine(`Error documenting resource: ${error.message}`);
+    outputChannel.appendLine(`Stacktrace: ${error.stack}`);
     getVscode().window.showErrorMessage(`Error documenting resource: ${error.message}`);
     return null;
   }

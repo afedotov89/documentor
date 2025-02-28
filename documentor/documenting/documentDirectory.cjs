@@ -52,7 +52,7 @@ async function documentPythonPackage(directoryPath, directoryInfo, outputChannel
     }
     
     // Add docstring to __init__.py
-    const updatedContent = addPythonInitDocstring(content, directoryInfo.description);
+    const updatedContent = addPythonInitDocstring(content, directoryInfo.docstring);
     await fs.promises.writeFile(initPyPath, updatedContent, 'utf8');
     outputChannel.appendLine(`Documentation added to __init__.py for ${directoryPath}`);
     return true;
