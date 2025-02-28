@@ -47,6 +47,11 @@ const { documentPath } = require('./documenting/documentPath.cjs');
 // Function for lazy channel initialization (can be skipped if you prefer to create channel on each call)
 //
 let _outputChannel = null;
+
+/**
+ * Gets or initializes the single output channel for the extension
+ * @returns {object} The global output channel
+ */
 function getOutputChannel() {
   if (!_outputChannel) {
     _outputChannel = getVscode().window.createOutputChannel('Documentor');
@@ -55,26 +60,43 @@ function getOutputChannel() {
 }
 
 /**
+ * Sets the output channel for the extension (used only in extension.js)
+ * @param {object} channel - The VSCode output channel to use
+ */
+function setOutputChannel(channel) {
+  _outputChannel = channel;
+}
+
+/**
  * Documents a file or directory
  * @param {object} resource - Resource to create documentation for
  * @returns {Promise<void>}
  */
 async function documentResource(resource) {
-  const filePath = resource.fsPath;
-  // Add output to _outputChannel in English
-  const outputChannel = getOutputChannel();
-  outputChannel.show(true); // Open channel
-  
   try {
-    // Index the path
-    await indexPath(filePath, outputChannel);
-    outputChannel.appendLine(`Indexing completed for: ${filePath}`);
-    await documentPath(filePath, outputChannel);
+    // Get the output channel and show it
+    const outputChannel = getOutputChannel();
+    outputChannel.show();
     
-    getVscode().window.showInformationMessage(`Documentation successfully created for: ${filePath}`);
-  } catch (err) {
-    console.error("Error processing file: ", err);
-    getVscode().window.showErrorMessage(err.message);
+    // Log start of documentation process
+    outputChannel.appendLine(`Starting documentation for ${resource.fsPath}...`);
+    
+    // Index the resource first
+    await indexPath(resource);
+    
+    // Then document it
+    const docs = await documentPath(resource);
+    outputChannel.appendLine('Documentation completed successfully.');
+    
+    return docs;
+  } catch (error) {
+    console.error(`Error documenting resource: ${error.message}`);
+    if (error.stack) {
+      console.error(error.stack);
+    }
+    
+    getVscode().window.showErrorMessage(`Error documenting resource: ${error.message}`);
+    return null;
   }
 }
 
@@ -102,4 +124,11 @@ function hasDocumentation(resource) {
   return indexManager.isFileInfoValid(filePath);
 }
 
-module.exports = { documentResource, getDocumentation, hasDocumentation, setVscode }; 
+module.exports = {
+  documentResource,
+  getDocumentation,
+  hasDocumentation,
+  setVscode,
+  getOutputChannel,
+  setOutputChannel
+}; 

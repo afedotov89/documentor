@@ -17,54 +17,7 @@ const { generateStandardProjectDocumentation } = require('./documentor/documenti
 // Global variables
 let exportPanel = undefined;
 let statusBarItem = undefined;
-
-/**
- * Gets a list of all indexed files in the selected project
- * @param {string} projectPath - Path to the project directory
- * @returns {Promise<Array<object>>} Array of objects with file information
- */
-async function getIndexedFilesInProject(projectPath) {
-  const projectId = indexManager.getProjectId(projectPath);
-  const projectIndexDir = pathModule.join(indexManager.baseIndexDir, projectId);
-  const results = [];
-  
-  if (!fs.existsSync(projectIndexDir)) {
-    return results;
-  }
-  
-  // Recursive function to traverse the directory
-  async function traverseDirectory(dir, baseDir) {
-    const entries = fs.readdirSync(dir);
-    
-    for (const entry of entries) {
-      const fullPath = pathModule.join(dir, entry);
-      const stats = fs.statSync(fullPath);
-      
-      if (stats.isDirectory()) {
-        await traverseDirectory(fullPath, baseDir);
-      } else if (stats.isFile() && entry.endsWith('.json')) {
-        try {
-          const data = fs.readFileSync(fullPath, 'utf8');
-          const fileInfo = JSON.parse(data);
-          
-          // Add file information to results
-          results.push({
-            filePath: fileInfo.filePath,
-            indexPath: fullPath,
-            timestamp: fileInfo.timestamp,
-            docstring: fileInfo.docstring,
-            description: fileInfo.description
-          });
-        } catch (error) {
-          console.error(`Error reading index file ${fullPath}: ${error.message}`);
-        }
-      }
-    }
-  }
-  
-  await traverseDirectory(projectIndexDir, projectIndexDir);
-  return results;
-}
+// Глобальная переменная будет инициализирована через documentor.getOutputChannel
 
 /**
  * Exports documentation for the current workspace/project
@@ -217,19 +170,30 @@ async function exportReadmeWithWebView(resource) {
  * @param {boolean} isProject - Flag indicating if we're exporting project documentation
  */
 async function handleExportFromWebView(resource, config, isProject = true) {
+  // Получаем единый output channel
+  const outputChannel = documentor.getOutputChannel();
+  
+  // Display output channel when starting generation
+  outputChannel.clear();
+  outputChannel.show();
+  outputChannel.appendLine(`Starting documentation generation for ${pathModule.basename(resource.fsPath)}...`);
+
   // Ensure the directory exists
   const fileInfo = await documentor.getDocumentation(resource);
   try {
     if (!fs.existsSync(config.exportDir)) {
       fs.mkdirSync(config.exportDir, { recursive: true });
+      outputChannel.appendLine(`Created directory: ${config.exportDir}`);
     }
   } catch (error) {
+    outputChannel.appendLine(`ERROR: Failed to create directory: ${error.message}`);
     vscode.window.showErrorMessage(`Failed to create directory: ${error.message}`);
     return;
   }
 
   // Construct the full file path
   const fullPath = pathModule.join(config.exportDir, config.filename);
+  outputChannel.appendLine(`Target file: ${fullPath}`);
 
   // Check if file exists
   if (fs.existsSync(fullPath)) {
@@ -240,22 +204,23 @@ async function handleExportFromWebView(resource, config, isProject = true) {
     );
     
     if (answer !== 'Yes') {
+      outputChannel.appendLine('User chose not to replace the existing file. Operation cancelled.');
       return;
     }
+    outputChannel.appendLine('User confirmed file replacement.');
   }
-
-  // For project create documentation
-  const indexedFiles = await getIndexedFilesInProject(resource.fsPath);
   
   // Get selected sections from configuration
   const selectedSections = config.sections || [];
+  outputChannel.appendLine(`Selected sections: ${selectedSections.join(', ') || 'All'}`);
   
-  // Use standard documentation format with selected sections
-  const content = await generateStandardProjectDocumentation(resource, fileInfo, indexedFiles, selectedSections);
-
-  // Write to file
   try {
+    // Use standard documentation format with selected sections
+    const content = await generateStandardProjectDocumentation(resource, fileInfo, selectedSections);
+
+    // Write to file
     fs.writeFileSync(fullPath, content, 'utf8');
+    outputChannel.appendLine(`Documentation successfully written to: ${fullPath}`);
     
     // Close WebView panel
     if (exportPanel) {
@@ -275,7 +240,11 @@ async function handleExportFromWebView(resource, config, isProject = true) {
       await vscode.window.showTextDocument(doc);
     }
   } catch (error) {
-    vscode.window.showErrorMessage(`Failed to export documentation: ${error.message}`);
+    outputChannel.appendLine(`ERROR: Failed to generate documentation: ${error.message}`);
+    if (error.stack) {
+      outputChannel.appendLine(`Stack trace: ${error.stack}`);
+    }
+    vscode.window.showErrorMessage(`Failed to generate documentation: ${error.message}`);
   }
 }
 
@@ -328,6 +297,13 @@ async function getDirectoriesForPath(dirPath) {
  * @param {Object} context - Extension context.
  */
 function activate(context) {
+  // Create output channel and set it for the documentor module
+  const outputChannel = vscode.window.createOutputChannel('Documentor');
+  context.subscriptions.push(outputChannel);
+  
+  // Set the output channel in documentor module
+  documentor.setOutputChannel(outputChannel);
+  
   // Create status bar button
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   statusBarItem.text = "$(book) Export Docs";
@@ -360,16 +336,16 @@ async function showDocumentorMenu(context) {
       description: "Export documentation to README.md",
       action: "readme"
     },
-    { 
-      label: "$(book) Full documentation", 
-      description: "Export full project documentation",
-      action: "full" 
-    },
-    { 
-      label: "$(file) Custom format...", 
-      description: "Export to custom file",
-      action: "custom" 
-    }
+    // { 
+    //   label: "$(book) Full documentation", 
+    //   description: "Export full project documentation",
+    //   action: "full" 
+    // },
+    // { 
+    //   label: "$(file) Custom format...", 
+    //   description: "Export to custom file",
+    //   action: "custom" 
+    // }
   ];
 
   const selected = await vscode.window.showQuickPick(options, { 
@@ -391,60 +367,6 @@ async function showDocumentorMenu(context) {
   }
 }
 
-/**
- * Exports documentation to README.md file in project root
- */
-async function exportDocumentationToReadme() {
-  // Get project root directory
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  if (!workspaceFolder) {
-    vscode.window.showErrorMessage('No workspace folder open');
-    return;
-  }
-  
-  const resource = workspaceFolder.uri;
-  const fileInfo = await documentor.getDocumentation(resource);
-  const indexedFiles = await getIndexedFilesInProject(resource.fsPath);
-  
-  // Create README.md content
-  const content = await generateStandardProjectDocumentation(resource, fileInfo, indexedFiles);
-  
-  // Path to README.md in project root
-  const readmePath = pathModule.join(resource.fsPath, 'README.md');
-  
-  // Check if file exists
-  if (fs.existsSync(readmePath)) {
-    const answer = await vscode.window.showWarningMessage(
-      'README.md file already exists. Do you want to replace it?',
-      'Yes',
-      'No'
-    );
-    
-    if (answer !== 'Yes') {
-      return;
-    }
-  }
-  
-  // Write file
-  try {
-    fs.writeFileSync(readmePath, content, 'utf8');
-    
-    // Ask if user wants to open the file
-    const openFile = await vscode.window.showInformationMessage(
-      `Documentation exported to README.md`,
-      'Open file',
-      'OK'
-    );
-    
-    if (openFile === 'Open file') {
-      const openPath = vscode.Uri.file(readmePath);
-      const doc = await vscode.workspace.openTextDocument(openPath);
-      await vscode.window.showTextDocument(doc);
-    }
-  } catch (error) {
-    vscode.window.showErrorMessage(`Failed to export documentation: ${error.message}`);
-  }
-}
 
 /**
  * Deactivation of the extension.
