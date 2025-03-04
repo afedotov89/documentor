@@ -163,4 +163,10 @@ module.exports = {
     isPathIgnored,
     readGitignorePatterns, // Export for testing or explicit usage
     findProjectRoot // Export the new utility function
-}; 
+};
+
+// Add named exports for ES modules compatibility
+module.exports.defaultIgnorePatterns = defaultIgnorePatterns;
+module.exports.isPathIgnored = isPathIgnored;
+module.exports.readGitignorePatterns = readGitignorePatterns;
+module.exports.findProjectRoot = findProjectRoot; 

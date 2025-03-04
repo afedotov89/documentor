@@ -1,0 +1,12 @@
+{
+  "name": "documentor-config",
+  "version": "1.0.0",
+  "description": "Configuration for documentor project",
+  "main": "index.js",
+  "scripts": {
+    "test": "node ignorePatterns.test.js"
+  },
+  "dependencies": {
+    "minimatch": "^5.1.0"
+  }
+} 
